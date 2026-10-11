@@ -47,12 +47,28 @@ h2{margin:0 0 12px;font-size:1.25em}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .grid2 .btn{margin:0;font-size:.98em}
 @media (max-width:330px){.grid2{grid-template-columns:1fr}}
-#videoBox{position:relative;border-radius:20px;overflow:hidden;background:#000;display:none;margin:10px 0}
-#video{width:100%;display:block;max-height:70vh;object-fit:cover}
-#videoBox .frame{position:absolute;inset:14%;border:5px solid #ffd54f;border-radius:18px;
-  box-shadow:0 0 0 2000px rgba(0,0,0,.35)}
-#videoBox .hint{position:absolute;left:8px;right:8px;bottom:10px;text-align:center;color:#fff;
-  font-size:.9em;font-weight:700;text-shadow:0 1px 4px #000}
+#videoBox{position:fixed;inset:0;z-index:85;background:#000;display:none;overflow:hidden}
+#video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+#videoBox .frame{position:absolute;left:50%;top:46%;width:min(74vw,58vh);height:min(74vw,58vh);
+  transform:translate(-50%,-50%);border:6px solid #ffd54f;border-radius:24px;
+  box-shadow:0 0 0 3000px rgba(0,0,0,.28)}
+#videoBox .frame::after{content:"";position:absolute;left:6%;right:6%;top:50%;height:4px;border-radius:4px;
+  background:rgba(255,213,79,.9);box-shadow:0 0 12px #ffd54f;animation:scanline 2.2s ease-in-out infinite}
+@keyframes scanline{0%,100%{top:8%}50%{top:90%}}
+#videoBox .hint{position:absolute;left:12px;right:12px;top:max(14px,env(safe-area-inset-top));text-align:center;color:#fff;
+  font-size:1.1em;font-weight:800;text-shadow:0 2px 6px #000;background:rgba(0,0,0,.35);border-radius:16px;padding:10px}
+#camBar{position:absolute;left:0;right:0;bottom:0;padding:12px 14px max(16px,env(safe-area-inset-bottom));
+  display:grid;grid-template-columns:1fr 1fr;gap:10px;background:linear-gradient(transparent,rgba(0,0,0,.6))}
+#camBar .btn{margin:0;min-height:64px}
+#camBar #camStop{grid-column:1/-1}
+.torch{position:absolute!important;top:auto!important;right:auto!important;left:50%;transform:translateX(-50%);
+  bottom:calc(150px + env(safe-area-inset-bottom))}
+body.scanOpen{overflow:hidden}
+.autoRow{display:flex;align-items:center;gap:12px;font-weight:700;margin:12px 0 2px;cursor:pointer;font-size:.95em}
+.autoRow input{width:30px;height:30px;accent-color:var(--green);flex:0 0 auto}
+.goBox{background:#fff;border:3px solid var(--blue);border-radius:16px;padding:12px;margin:10px 0;text-align:center}
+.goBox .gt{font-size:1.1em;font-weight:800;color:var(--blue)}
+.goBox .gh{word-break:break-all;font-size:.9em;color:var(--soft);margin:4px 0 8px}
 .result{border:4px solid var(--green);background:#ecfbf2}
 .val{font-size:1em;word-break:break-word;white-space:pre-wrap;background:#fff;
   border-radius:14px;padding:12px;border:2px solid #cdeedd;margin:8px 0}
@@ -169,12 +185,17 @@ textarea.bigta{min-height:180px}
       <h2>📷 <span data-i="readTitle"></span></h2>
       <button class="btn b-green big" id="camStart">📷 <span data-i="camOpen"></span></button>
       <div id="videoBox">
-        <video id="video" playsinline muted></video>
+        <video id="video" playsinline muted autoplay></video>
         <div class="frame"></div>
         <div class="hint" data-i="camHint"></div>
+        <div id="camBar">
+          <button class="btn b-blue" id="camPhoto">🖼️ <span data-i="photoShort"></span></button>
+          <button class="btn b-teal" id="camFlip">🔄 <span data-i="recFlip"></span></button>
+          <button class="btn b-red big" id="camStop">✖ <span data-i="camClose"></span></button>
+        </div>
       </div>
-      <button class="btn b-red hidden" id="camStop">✖ <span data-i="camClose"></span></button>
       <button class="btn b-blue" id="photoBtn">🖼️ <span data-i="fromPhoto"></span></button>
+      <label class="autoRow"><input type="checkbox" id="autoOpen"><span data-i="autoOpen"></span></label>
       <input type="file" id="photoIn" accept="image/*" class="hidden">
       <div class="small" id="readMsg"></div>
     </div>
@@ -283,7 +304,7 @@ textarea.bigta{min-height:180px}
 
 
   <div id="printArea" class="hidden"></div>
-  <footer><span data-i="title"></span> · <span data-i="version"></span> 10-10-2026 · <span data-i="offline"></span></footer>
+  <footer><span data-i="title"></span> · <span data-i="version"></span> 11-10-2026 · <span data-i="offline"></span></footer>
 </div>
 
 <!-- Ηχογράφηση / Βίντεο -->
@@ -335,7 +356,10 @@ function esc(s){return String(s).replace(/[&<>"']/g,function(c){return{"&":"&amp
 
 /* ================= ΓΛΩΣΣΕΣ / LANGUAGES ================= */
 var L={
-el:{ fill:"Συμπλήρωσε",eGeo:"Οι συντεταγμένες δεν είναι σωστές.",eIban:"Το IBAN δεν φαίνεται σωστό. Έλεγξέ το ξανά.",payTo:"Πληρωμή σε",amount:"Ποσό",
+el:{ photoShort:"Από φωτογραφία",autoOpen:"⚡ Να ανοίγει αυτόματα ό,τι βρίσκει",goIn:"Ανοίγει σε {n}…",goStop:"Μην ανοίξεις",goNow:"Άνοιξε τώρα",
+ mapsOpen:"🗺️ Άνοιξε τους Χάρτες Google",mapsSend:"📤 Στείλε αυτή την τοποθεσία",eGeo2:"Επικόλλησε σύνδεσμο από τους Χάρτες Google ή πάτα «Η θέση μου τώρα».",
+ needLoc:"Πάτα πρώτα «Η θέση μου τώρα» ή επικόλλησε σύνδεσμο από τους Χάρτες.",locLink:"📍 Η τοποθεσία μου",
+ fill:"Συμπλήρωσε",eGeo:"Οι συντεταγμένες δεν είναι σωστές.",eIban:"Το IBAN δεν φαίνεται σωστό. Έλεγξέ το ξανά.",payTo:"Πληρωμή σε",amount:"Ποσό",
  iceT:"Σε περίπτωση ανάγκης",iceCall:"Ειδοποιήστε",blood:"Ομάδα αίματος",petFound:"Αν με βρήκατε, παρακαλώ τηλεφωνήστε στον ιδιοκτήτη μου:",owner:"Ιδιοκτήτης",
  lostT:"Αν το βρήκατε, παρακαλώ επικοινωνήστε μαζί μου:",eLost:"Γράψε τηλέφωνο ή email.",locating:"Ψάχνω τη θέση σου…",locFail:"Δεν βρέθηκε η θέση. Επίτρεψε την τοποθεσία και ξαναδοκίμασε.",
  kEvent:"📅 Εκδήλωση",kPay:"🏦 Πληρωμή",addCal:"📅 Προσθήκη στο ημερολόγιο",payWarn:"🛡️ Έλεγξε προσεκτικά το όνομα και το ποσό πριν πληρώσεις. Πλήρωσε μόνο αν ξέρεις ποιος σου έδωσε τον κωδικό.",
@@ -379,7 +403,10 @@ title:"Κωδικοί QR",subtitle:"Διαβάζω και φτιάχνω του�
  tooLongLogo:"Το κείμενο είναι μεγάλο, γι' αυτό ο κωδικός φτιάχτηκε χωρίς λογότυπο.",
  saved:"✔ Η εικόνα αποθηκεύτηκε",shareFallback:"Η εικόνα αποθηκεύτηκε. Επισύναψέ τη στο email ή στο μήνυμά σου.",
  mailSubject:"Κωδικός QR",myCaption:"Η σελίδα μου"},
-en:{ fill:"Please fill in",eGeo:"The coordinates are not valid.",eIban:"The IBAN doesn't look right. Please check it.",payTo:"Pay to",amount:"Amount",
+en:{ photoShort:"From photo",autoOpen:"⚡ Open automatically whatever it finds",goIn:"Opening in {n}…",goStop:"Don't open",goNow:"Open now",
+ mapsOpen:"🗺️ Open Google Maps",mapsSend:"📤 Send this location",eGeo2:"Paste a link from Google Maps or press «My location now».",
+ needLoc:"First press «My location now» or paste a link from Maps.",locLink:"📍 My location",
+ fill:"Please fill in",eGeo:"The coordinates are not valid.",eIban:"The IBAN doesn't look right. Please check it.",payTo:"Pay to",amount:"Amount",
  iceT:"In case of emergency",iceCall:"Please call",blood:"Blood type",petFound:"If you found me, please call my owner:",owner:"Owner",
  lostT:"If found, please contact me:",eLost:"Type a phone or email.",locating:"Finding your location…",locFail:"Location not found. Allow location and try again.",
  kEvent:"📅 Event",kPay:"🏦 Payment",addCal:"📅 Add to calendar",payWarn:"🛡️ Check the name and amount carefully before paying. Pay only if you know who gave you the code.",
@@ -462,20 +489,22 @@ function decodeCanvas(src,w,h){
   var r=jsQR(d.data,w,h,{inversionAttempts:"attemptBoth"});
   return r&&r.data?r.data:null;
 }
+var camFacing="environment";
 function startCam(){
-  $("readMsg").textContent="";
+  $("readMsg").textContent="";cancelGo();
   if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){$("readMsg").textContent=T("noCam");return}
-  navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"},width:{ideal:1280},height:{ideal:720}},audio:false})
+  if(stream){stream.getTracks().forEach(function(t){t.stop()});stream=null}
+  navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:camFacing},width:{ideal:1920},height:{ideal:1080}},audio:false})
   .then(function(s){
-    stream=s;var v=$("video");v.srcObject=s;v.play();
-    $("videoBox").style.display="block";$("camStart").classList.add("hidden");$("camStop").classList.remove("hidden");
+    stream=s;var v=$("video");v.srcObject=s;v.play().catch(function(){});
+    $("videoBox").style.display="block";document.body.classList.add("scanOpen");
     $("resultCard").classList.add("hidden");scanning=true;loop();
-  }).catch(function(){$("readMsg").textContent=T("camDenied")});
+  }).catch(function(){stopCam();$("readMsg").textContent=T("camDenied")});
 }
 function stopCam(){
   scanning=false;
   if(stream){stream.getTracks().forEach(function(t){t.stop()});stream=null}
-  $("videoBox").style.display="none";$("camStart").classList.remove("hidden");$("camStop").classList.add("hidden");
+  $("videoBox").style.display="none";document.body.classList.remove("scanOpen");
 }
 var lastTry=0,busy=false;
 function loop(){
@@ -494,6 +523,11 @@ function loop(){
   if(t&&scanning)found(t);
 }
 $("camStart").onclick=startCam;$("camStop").onclick=stopCam;
+$("camFlip").onclick=function(){camFacing=camFacing==="environment"?"user":"environment";startCam()};
+$("camPhoto").onclick=function(){stopCam();$("photoIn").value="";$("photoIn").click()};
+window.addEventListener("popstate",function(){if(scanning)stopCam()});
+$("autoOpen").checked=store("qr_auto")!==false;
+$("autoOpen").onchange=function(){store("qr_auto",$("autoOpen").checked);if(!$("autoOpen").checked)cancelGo()};
 
 $("photoBtn").onclick=function(){$("photoIn").value="";$("photoIn").click()};
 $("photoIn").onchange=function(e){
@@ -593,6 +627,13 @@ function analyse(t){
     var mails=noIsbn.match(/[\w.+-]+@[\w-]+\.[\w.]+/g)||[];
     mails.slice(0,2).forEach(function(m){r.actions.push({t:"✉️ "+m,href:"mailto:"+m,c:"b-blue"})});
   }
+  /* τι ανοίγει αυτόματα / what opens automatically */
+  if(!plain&&r.kind!==T("kBook")&&r.kind!==T("kPay")&&r.kind!==T("kWifi")){
+    var acts=r.actions.filter(function(x){return x.href});
+    var pick=r.kind===T("kCard")?acts[acts.length-1]:acts[0];
+    if(pick){var lab=pick.t;try{if(/^https?:/.test(pick.href))lab=new URL(pick.href).hostname.replace(/^www\./,"")}catch(e){}
+      r.auto={href:pick.href,dl:pick.dl,label:lab}}
+  }
   return r;
 }
 var current="";
@@ -609,7 +650,25 @@ function found(t,quiet){
     el.className="btn "+a.c;el.textContent=a.t;box.appendChild(el);
   });
   $("resultCard").classList.remove("hidden");
-  if(!quiet){$("resultCard").scrollIntoView({behavior:"smooth",block:"start"});addHist(t)}
+  if(!quiet){$("resultCard").scrollIntoView({behavior:"smooth",block:"start"});addHist(t);
+    if(r.auto&&$("autoOpen").checked)startGo(r.auto)}
+}
+/* Αυτόματο άνοιγμα / auto-open */
+var goTimer=null;
+function cancelGo(){clearInterval(goTimer);goTimer=null;var g=$("goBox");if(g)g.remove()}
+function doGo(a){
+  if(a.dl){var x=document.createElement("a");x.href=a.href;x.download=a.dl;document.body.appendChild(x);x.click();x.remove();return}
+  location.href=a.href;
+}
+function startGo(a){
+  cancelGo();var n=3,box=document.createElement("div");box.className="goBox";box.id="goBox";
+  var gt=document.createElement("div");gt.className="gt";var gh=document.createElement("div");gh.className="gh";gh.textContent=a.label||"";
+  var b=document.createElement("button");b.className="btn b-grey";b.textContent="✋ "+T("goStop");b.onclick=cancelGo;
+  var b2=document.createElement("button");b2.className="btn b-green";b2.textContent="▶️ "+T("goNow");b2.onclick=function(){cancelGo();doGo(a)};
+  box.appendChild(gt);box.appendChild(gh);var g=document.createElement("div");g.className="grid2";g.appendChild(b2);g.appendChild(b);box.appendChild(g);
+  $("resKind").insertAdjacentElement("afterend",box);
+  var tick=function(){gt.textContent=T("goIn").replace("{n}",n)};tick();
+  goTimer=setInterval(function(){n--;if(n<=0){cancelGo();doGo(a)}else tick()},1000);
 }
 function copy(t){
   var ok=function(){toast(T("copied"))};
@@ -618,7 +677,7 @@ function copy(t){
     try{document.execCommand("copy");ok()}catch(e){toast(T("copyFail"))}a.remove()}
 }
 $("copyBtn").onclick=function(){copy(current)};
-$("againBtn").onclick=function(){$("resultCard").classList.add("hidden");current="";startCam()};
+$("againBtn").onclick=function(){cancelGo();$("resultCard").classList.add("hidden");current="";startCam()};
 
 function addHist(t){var h=store("qr_hist")||[];h=h.filter(function(x){return x.t!==t});
   h.unshift({t:t,d:Date.now()});store("qr_hist",h.slice(0,20));drawHist()}
@@ -695,6 +754,10 @@ function linkType(id,cat,ic,n,lab,hint,ph){return{id:id,cat:cat,ic:ic,n:n,hint:h
 function socType(id,ic,name,base,suffix){return{id:id,cat:"social",ic:ic,n:LB(name,name),f:[{id:"u",l:USER,k:"text",req:1,ph:"@..."}],
   b:function(g){var u=social(base,g("u"),suffix);return{t:u,cap:name+": "+g("u").replace(/^https?:\/\/(www\.)?/,"")}}}}
 
+function geoLink(g){var m=g("m");if(m)return fixUrl(m);
+  var la=g("la").replace(",","."),lo=g("lo").replace(",",".");
+  if(!la||!lo||isNaN(parseFloat(la))||isNaN(parseFloat(lo)))return"";
+  return "https://www.google.com/maps/search/?api=1&query="+parseFloat(la)+","+parseFloat(lo)}
 var TYPES=[
  {id:"mine",star:1,ic:"⭐",n:LB("Η σελίδα μου","My page"),hint:LB("Τον γράφεις μία φορά και η εφαρμογή τον θυμάται. Μετά πατάς μόνο «Φτιάξε τον κωδικό».","Type it once and the app remembers it. Then just press «Create the QR code»."),
   f:[{id:"u",l:LB("Ο σύνδεσμος της σελίδας μου","The link of my page"),k:"url",req:1,save:"qr_myurl",def:"https://innerlife1111.pages.dev"}],
@@ -720,11 +783,14 @@ var TYPES=[
   f:[{id:"n",l:LB("Όνομα τόπου (προαιρετικά)","Place name (optional)"),k:"text"},{id:"a",l:LB("Διεύθυνση","Address"),k:"area",req:1}],
   b:function(g){var a=g("a").replace(/\n/g,", "),u="https://www.google.com/maps/search/?api=1&query="+encodeURIComponent(a);
     return{t:u,share:(g("n")?g("n")+"\n":"")+a+"\n"+u,cap:g("n")||g("a").split("\n")[0]}}},
- {id:"geo",cat:"basic",ic:"📍",n:LB("Τοποθεσία (GPS)","Location (GPS)"),loc:1,hint:LB("Πάτα «Η θέση μου τώρα» για να μπουν αυτόματα οι συντεταγμένες του σημείου όπου βρίσκεσαι.","Press «My location now» to fill in the coordinates of where you are."),
-  f:[{id:"n",l:LB("Όνομα τόπου (προαιρετικά)","Place name (optional)"),k:"text"},{id:"la",l:LB("Γεωγραφικό πλάτος","Latitude"),k:"text",req:1,ph:"34.7071"},{id:"lo",l:LB("Γεωγραφικό μήκος","Longitude"),k:"text",req:1,ph:"33.0226"}],
-  b:function(g){var la=g("la").replace(",","."),lo=g("lo").replace(",",".");
-    if(isNaN(parseFloat(la))||isNaN(parseFloat(lo)))return{err:T("eGeo")};
-    var u="https://www.google.com/maps/search/?api=1&query="+la+","+lo;return{t:u,share:(g("n")?g("n")+"\n":"")+u,cap:g("n")||la+", "+lo}}},
+ {id:"geo",cat:"basic",ic:"📍",n:LB("Τοποθεσία (Χάρτες Google)","Location (Google Maps)"),loc:1,
+  hint:LB("Δύο τρόποι: 1) Πάτα «Η θέση μου τώρα» για το σημείο όπου βρίσκεσαι. 2) Πάτα «Άνοιξε τους Χάρτες Google», βρες το μέρος, πάτα «Κοινοποίηση» → «Αντιγραφή συνδέσμου», γύρνα εδώ και πάτα 📋 στο πεδίο του συνδέσμου. Όποιος σκανάρει τον κωδικό, ανοίγει κατευθείαν τους Χάρτες Google.",
+    "Two ways: 1) Press «My location now» for where you are. 2) Press «Open Google Maps», find the place, tap «Share» → «Copy link», come back and tap 📋 on the link field. Whoever scans the code opens Google Maps directly."),
+  f:[{id:"n",l:LB("Όνομα τόπου (προαιρετικά)","Place name (optional)"),k:"text"},
+     {id:"m",l:LB("Σύνδεσμος από Χάρτες Google","Link from Google Maps"),k:"url",ph:"https://maps.app.goo.gl/..."},
+     {id:"la",l:LB("Γεωγραφικό πλάτος","Latitude"),k:"text",ph:"34.7071"},{id:"lo",l:LB("Γεωγραφικό μήκος","Longitude"),k:"text",ph:"33.0226"}],
+  b:function(g){var u=geoLink(g);if(!u)return{err:T("eGeo2")};
+    var la=g("la"),lo=g("lo");return{t:u,share:(g("n")?g("n")+"\n":"")+u,cap:g("n")||(g("m")?T("locLink"):la+", "+lo)}}},
  {id:"event",cat:"basic",ic:"📅",n:LB("Εκδήλωση / Ραντεβού","Event / Appointment"),hint:LB("Όποιος σκανάρει, μπορεί να το βάλει στο ημερολόγιό του.","Whoever scans can add it to their calendar."),
   f:[{id:"t",l:LB("Τίτλος","Title"),k:"text",req:1},{id:"d",l:LB("Ημερομηνία","Date"),k:"date",req:1},
      {id:"s",l:LB("Ώρα έναρξης (προαιρετικά)","Start time (optional)"),k:"time"},{id:"e",l:LB("Ώρα λήξης (προαιρετικά)","End time (optional)"),k:"time"},
@@ -837,10 +903,20 @@ function typeBtn(t){var b=document.createElement("button");b.className="type"+(t
       if(f.save){inp.value=store(f.save)||f.def||"";inp.addEventListener("change",function(){store(f.save,inp.value.trim())})}
       if(f.k==="email"||f.k==="url"){inp.autocapitalize="off";inp.spellcheck=false}
       d.appendChild(inp)});
-    if(t.loc){var lb=document.createElement("button");lb.className="btn b-teal locBtn";lb.type="button";biL(lb,LB("📍 Η θέση μου τώρα","📍 My location now"));
+    if(t.loc){
+      var gg=function(k){var e=$("f_geo_"+k);return e?e.value.trim():""};
+      var lb=document.createElement("button");lb.className="btn b-teal locBtn";lb.type="button";biL(lb,LB("📍 Η θέση μου τώρα","📍 My location now"));
       lb.onclick=function(){if(!navigator.geolocation){toast(T("locFail"));return}toast(T("locating"));
-        navigator.geolocation.getCurrentPosition(function(p){$("f_geo_la").value=p.coords.latitude.toFixed(6);$("f_geo_lo").value=p.coords.longitude.toFixed(6);toast("✔")},
-          function(){toast(T("locFail"))},{enableHighAccuracy:true,timeout:15000})};d.appendChild(lb)}
+        navigator.geolocation.getCurrentPosition(function(p){$("f_geo_la").value=p.coords.latitude.toFixed(6);$("f_geo_lo").value=p.coords.longitude.toFixed(6);$("f_geo_m").value="";toast("✔")},
+          function(){toast(T("locFail"))},{enableHighAccuracy:true,timeout:15000})};
+      var mb=document.createElement("button");mb.className="btn b-blue locBtn";mb.type="button";biL(mb,LB(L.el.mapsOpen,L.en.mapsOpen));
+      mb.onclick=function(){var u=geoLink(gg)||"https://www.google.com/maps";window.open(u,"_blank","noopener")};
+      var sb=document.createElement("button");sb.className="btn b-pink locBtn";sb.type="button";biL(sb,LB(L.el.mapsSend,L.en.mapsSend));
+      sb.onclick=function(){var u=geoLink(gg);if(!u){toast(T("needLoc"));return}
+        var txt=(gg("n")?gg("n")+"\n":T("locLink")+"\n")+u;
+        if(navigator.share)navigator.share({title:gg("n")||T("locLink"),text:txt}).catch(function(){});
+        else{copy(txt)}};
+      d.appendChild(lb);d.appendChild(mb);d.appendChild(sb)}
     if(t.hint){var h=document.createElement("div");h.className="small";biL(h,t.hint);d.appendChild(h)}
     fb.appendChild(d)});
 })();
@@ -1360,5 +1436,6 @@ loadLogo(logoData);
 applyLang();
 })();
 </script>
+<script src="https://cdn.jsdelivr.net/gh/Christos1354/ypografi@main/ypografi.js" defer></script>
 </body>
 </html>
