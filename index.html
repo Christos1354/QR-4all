@@ -304,7 +304,7 @@ textarea.bigta{min-height:180px}
 
 
   <div id="printArea" class="hidden"></div>
-  <footer><span data-i="title"></span> · <span data-i="version"></span> 11-10-2026 · <span data-i="offline"></span></footer>
+  <footer><span data-i="title"></span> · <span data-i="version"></span> 22-10-2026 · <span data-i="offline"></span></footer>
 </div>
 
 <!-- Ηχογράφηση / Βίντεο -->
@@ -383,7 +383,7 @@ title:"Κωδικοί QR",subtitle:"Διαβάζω και φτιάχνω του�
  logoUse:"Βάλε το λογότυπο στον κωδικό",logoHint:"Διάλεξε μια φορά την εικόνα του λογότυπου από τις φωτογραφίες σου. Η εφαρμογή τη θυμάται.",
  logoSaved:"✔ Το λογότυπο αποθηκεύτηκε",
  makeBtn:"Φτιάξε τον κωδικό QR",shareImg:"Στείλε την εικόνα (Viber, Email, Μηνύματα…)",
- shareImgHint:"Ανοίγει τη λίστα του κινητού σου για να διαλέξεις πού θα σταλεί η εικόνα του κωδικού.",
+ shareImgHint:"Στέλνει μόνο την εικόνα του κωδικού (1 μήνυμα). Διάλεξε Viber, Email, Μηνύματα κλπ.",
  sendText:"Ή στείλε μόνο το περιεχόμενο / τον σύνδεσμο:",save:"Αποθήκευση",print:"Εκτύπωση",
  tip:"Συμβουλή: δοκίμασέ τον με την καρτέλα «Διάβασμα» πριν τον τυπώσεις.",
  version:"Έκδοση",offline:"Δουλεύει και χωρίς ίντερνετ",
@@ -430,7 +430,7 @@ title:"QR Codes",subtitle:"Read QR codes and create your own",
  logoUse:"Put the logo in the code",logoHint:"Pick your logo image once from your photos. The app remembers it.",
  logoSaved:"✔ Logo saved",
  makeBtn:"Create the QR code",shareImg:"Send the image (Viber, Email, Messages…)",
- shareImgHint:"Opens your phone's list so you choose where to send the code image.",
+ shareImgHint:"Sends only the code image (1 message). Choose Viber, Email, Messages etc.",
  sendText:"Or send just the content / link:",save:"Save",print:"Print",
  tip:"Tip: test it with the «Scan» tab before printing.",
  version:"Version",offline:"Works offline too",
@@ -475,7 +475,7 @@ function showTab(r){
   $("tabRead").classList.toggle("on",r);$("tabMake").classList.toggle("on",!r);
   if(!r)stopCam();
 }
-$("tabRead").onclick=function(){showTab(true)};
+$("tabRead").onclick=function(){showTab(true);if(!scanning)startCam()};
 $("tabMake").onclick=function(){showTab(false)};
 
 /* ================= READ ================= */
@@ -489,23 +489,36 @@ function decodeCanvas(src,w,h){
   var r=jsQR(d.data,w,h,{inversionAttempts:"attemptBoth"});
   return r&&r.data?r.data:null;
 }
-var camFacing="environment";
+var camFacing="environment",camOffTimer=null;
+/* Η κάμερα μένει «ζεστή» για λίγο, ώστε να μη ζητά ξανά άδεια σε κάθε σκανάρισμα
+   Keep the camera warm for a while so the phone doesn't ask permission on every scan */
+function releaseCam(){clearTimeout(camOffTimer);camOffTimer=null;
+  if(stream){stream.getTracks().forEach(function(t){t.stop()});stream=null}}
+function showScanner(){$("videoBox").style.display="block";document.body.classList.add("scanOpen");$("resultCard").classList.add("hidden")}
 function startCam(){
-  $("readMsg").textContent="";cancelGo();
+  $("readMsg").textContent="";cancelGo();clearTimeout(camOffTimer);
   if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){$("readMsg").textContent=T("noCam");return}
-  if(stream){stream.getTracks().forEach(function(t){t.stop()});stream=null}
+  var v=$("video");
+  if(stream&&stream.active&&stream.getVideoTracks().some(function(t){return t.readyState==="live"})){
+    stream.getVideoTracks().forEach(function(t){t.enabled=true});
+    if(v.srcObject!==stream)v.srcObject=stream;v.play().catch(function(){});
+    showScanner();scanning=true;loop();return;
+  }
+  releaseCam();showScanner();
   navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:camFacing},width:{ideal:1920},height:{ideal:1080}},audio:false})
   .then(function(s){
-    stream=s;var v=$("video");v.srcObject=s;v.play().catch(function(){});
-    $("videoBox").style.display="block";document.body.classList.add("scanOpen");
-    $("resultCard").classList.add("hidden");scanning=true;loop();
-  }).catch(function(){stopCam();$("readMsg").textContent=T("camDenied")});
+    stream=s;v.srcObject=s;v.play().catch(function(){});
+    if($("videoBox").style.display==="none"){stopCam();return}
+    scanning=true;loop();
+  }).catch(function(){stopCam();releaseCam();$("readMsg").textContent=T("camDenied")});
 }
 function stopCam(){
   scanning=false;
-  if(stream){stream.getTracks().forEach(function(t){t.stop()});stream=null}
+  if(stream){stream.getVideoTracks().forEach(function(t){t.enabled=false});
+    clearTimeout(camOffTimer);camOffTimer=setTimeout(releaseCam,120000)}
   $("videoBox").style.display="none";document.body.classList.remove("scanOpen");
 }
+document.addEventListener("visibilitychange",function(){if(document.hidden&&!scanning)releaseCam()});
 var lastTry=0,busy=false;
 function loop(){
   if(!scanning)return;
@@ -523,7 +536,7 @@ function loop(){
   if(t&&scanning)found(t);
 }
 $("camStart").onclick=startCam;$("camStop").onclick=stopCam;
-$("camFlip").onclick=function(){camFacing=camFacing==="environment"?"user":"environment";startCam()};
+$("camFlip").onclick=function(){camFacing=camFacing==="environment"?"user":"environment";releaseCam();startCam()};
 $("camPhoto").onclick=function(){stopCam();$("photoIn").value="";$("photoIn").click()};
 window.addEventListener("popstate",function(){if(scanning)stopCam()});
 $("autoOpen").checked=store("qr_auto")!==false;
@@ -661,7 +674,7 @@ function doGo(a){
   location.href=a.href;
 }
 function startGo(a){
-  cancelGo();var n=3,box=document.createElement("div");box.className="goBox";box.id="goBox";
+  cancelGo();var n=2,box=document.createElement("div");box.className="goBox";box.id="goBox";
   var gt=document.createElement("div");gt.className="gt";var gh=document.createElement("div");gh.className="gh";gh.textContent=a.label||"";
   var b=document.createElement("button");b.className="btn b-grey";b.textContent="✋ "+T("goStop");b.onclick=cancelGo;
   var b2=document.createElement("button");b2.className="btn b-green";b2.textContent="▶️ "+T("goNow");b2.onclick=function(){cancelGo();doGo(a)};
@@ -981,7 +994,7 @@ function saveImg(msg){getBlob(function(b){var a=document.createElement("a");a.hr
   a.download=fileName();document.body.appendChild(a);a.click();a.remove();toast(msg||T("saved"))})}
 $("saveBtn").onclick=function(){saveImg()};
 $("shareImg").onclick=function(){getBlob(function(b){
-  var f=new File([b],fileName(),{type:"image/png"}),data={files:[f],title:T("mailSubject"),text:shareText};
+  var f=new File([b],fileName(),{type:"image/png"}),data={files:[f]}; /* μόνο η εικόνα = 1 μήνυμα / image only = 1 message */
   if(navigator.canShare&&navigator.canShare({files:[f]})){
     navigator.share(data).catch(function(err){if(err&&err.name!=="AbortError"){navigator.share({files:[f]}).catch(function(){})}})}
   else saveImg(T("shareFallback"));})};
@@ -1436,6 +1449,5 @@ loadLogo(logoData);
 applyLang();
 })();
 </script>
-<script src="https://cdn.jsdelivr.net/gh/Christos1354/ypografi@main/ypografi.js" defer></script>
 </body>
 </html>
