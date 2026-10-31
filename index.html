@@ -106,6 +106,10 @@ textarea{min-height:110px;resize:vertical}
 .hist{list-style:none;padding:0;margin:0}
 .hist li{border-bottom:2px solid var(--line);padding:12px 0;font-size:.9em;word-break:break-word;cursor:pointer}
 .hist li small{display:block;color:var(--soft);font-size:.85em}
+.hist li.hrow{display:flex;align-items:center;gap:10px;cursor:default}
+.hrow .htxt{flex:1;min-width:0;cursor:pointer}
+.hdel{flex:0 0 56px;height:56px;border:none;border-radius:14px;background:#ffe3e3;font-size:1.4em;cursor:pointer}
+.hdel:active{background:#ffc9c9}
 .toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:#1d1640;color:#fff;
   padding:14px 24px;border-radius:999px;font-size:1em;font-weight:700;z-index:99;display:none;
   max-width:92vw;text-align:center}
@@ -367,8 +371,8 @@ el:{ photoShort:"Από φωτογραφία",autoOpen:"⚡ Να ανοίγει 
 title:"Κωδικοί QR",subtitle:"Διαβάζω και φτιάχνω τους δικούς μου κωδικούς QR",
  tabRead:"Διάβασμα",tabMake:"Δημιουργία",readTitle:"Διάβασε έναν κωδικό QR",camOpen:"Άνοιξε την κάμερα",
  camHint:"Βάλε τον κωδικό μέσα στο κίτρινο πλαίσιο",camClose:"Κλείσε την κάμερα",fromPhoto:"Διάβασε από φωτογραφία",
- found:"Βρέθηκε!",copy:"Αντιγραφή",readAnother:"Διάβασε άλλον",histTitle:"Τελευταία που διάβασα",histClear:"Καθάρισμα λίστας",
- histEmpty:"Δεν έχεις διαβάσει ακόμα κανέναν κωδικό.",histAsk:"Να σβηστεί η λίστα;",
+ found:"Βρέθηκε!",copy:"Αντιγραφή",readAnother:"Διάβασε άλλον",histTitle:"Τελευταία που διάβασα",histClear:"Σβήσιμο όλων",
+ histEmpty:"Δεν έχεις διαβάσει ακόμα κανέναν κωδικό.",histAsk:"Να σβηστούν όλα από τη λίστα;",histDelAsk:"Να σβηστεί αυτό από τη λίστα;",histDelOne:"Σβήσιμο",
  step1:"Τι θέλεις να βάλεις στο QR;",step2:"Συμπλήρωσε",step3:"Ο κωδικός σου",
  tMine:"Η σελίδα μου",tBook:"Βιβλίο",tUrl:"Ιστοσελίδα",tAddr:"Διεύθυνση",tText:"Κείμενο",tTel:"Τηλέφωνο",tCard:"Κάρτα επαφής",
  myUrl:"Ο σύνδεσμος της σελίδας μου",myUrlHint:"Τον γράφεις μία φορά και η εφαρμογή τον θυμάται. Μετά πατάς μόνο «Φτιάξε τον κωδικό».",
@@ -414,8 +418,8 @@ en:{ photoShort:"From photo",autoOpen:"⚡ Open automatically whatever it finds"
 title:"QR Codes",subtitle:"Read QR codes and create your own",
  tabRead:"Scan",tabMake:"Create",readTitle:"Scan a QR code",camOpen:"Open the camera",
  camHint:"Place the code inside the yellow frame",camClose:"Close the camera",fromPhoto:"Scan from a photo",
- found:"Found it!",copy:"Copy",readAnother:"Scan another",histTitle:"Recently scanned",histClear:"Clear the list",
- histEmpty:"You haven't scanned any code yet.",histAsk:"Clear the list?",
+ found:"Found it!",copy:"Copy",readAnother:"Scan another",histTitle:"Recently scanned",histClear:"Delete all",
+ histEmpty:"You haven't scanned any code yet.",histAsk:"Clear the whole list?",histDelAsk:"Remove this one from the list?",histDelOne:"Delete",
  step1:"What do you want in the QR code?",step2:"Fill in",step3:"Your code",
  tMine:"My page",tBook:"Book",tUrl:"Website",tAddr:"Address",tText:"Text",tTel:"Phone",tCard:"Contact card",
  myUrl:"The link of my page",myUrlHint:"Type it once and the app remembers it. Then just press «Create the QR code».",
@@ -697,8 +701,14 @@ function addHist(t){var h=store("qr_hist")||[];h=h.filter(function(x){return x.t
 function drawHist(){var h=store("qr_hist")||[],ul=$("histList");ul.innerHTML="";
   if(!h.length){var e=document.createElement("li");e.style.cursor="default";e.style.color="#5a5280";e.textContent=T("histEmpty");ul.appendChild(e)}
   h.forEach(function(x){var li=document.createElement("li"),d=typeof x.d==="number"?new Date(x.d).toLocaleString(lang==="el"?"el-GR":"en-GB"):x.d;
-    li.innerHTML=esc(x.t.length>90?x.t.slice(0,90)+"…":x.t)+"<small>"+esc(d)+"</small>";
-    li.onclick=function(){found(x.t)};ul.appendChild(li)});
+    li.className="hrow";
+    var tx0=document.createElement("div");tx0.className="htxt";
+    tx0.innerHTML=esc(x.t.length>90?x.t.slice(0,90)+"…":x.t)+"<small>"+esc(d)+"</small>";
+    tx0.onclick=function(){found(x.t)};li.appendChild(tx0);
+    var del=document.createElement("button");del.type="button";del.className="hdel";del.textContent="🗑️";del.title=T("histDelOne");
+    del.onclick=function(ev){ev.stopPropagation();if(!confirm(T("histDelAsk")))return;
+      var hh=(store("qr_hist")||[]).filter(function(y){return y.t!==x.t});store("qr_hist",hh);drawHist();toast(T("deleted"))};
+    li.appendChild(del);ul.appendChild(li)});
   $("histClear").classList.toggle("hidden",!h.length)}
 $("histClear").onclick=function(){if(confirm(T("histAsk"))){store("qr_hist",[]);drawHist()}};
 
